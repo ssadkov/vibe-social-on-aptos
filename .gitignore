@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Environment (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+frontend/dist/
+contract/build/
+contract/.coverage_map.mvcov
+
+# IDE
+.aptos/
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
