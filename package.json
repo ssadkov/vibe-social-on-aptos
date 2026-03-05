@@ -1,5 +1,5 @@
 {
-  "name": "boilerplate-template",
+  "name": "object-vibe",
   "private": true,
   "version": "0.0.0",
   "license": "Apache-2.0",
@@ -11,6 +11,8 @@
     "init-comment-events": "node ./scripts/move/init-comment-events",
     "fresh-deploy": "node ./scripts/move/fresh-deploy",
     "fix-env-address": "node ./scripts/move/fix-env-address",
+    "create-testnet-account": "node ./scripts/move/create-testnet-account",
+    "update-readme-testnet-address": "node ./scripts/move/update-readme-testnet-address",
     "dev": "vite",
     "build": "tsc && vite build",
     "deploy": "vercel",

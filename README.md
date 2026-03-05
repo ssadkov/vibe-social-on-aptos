@@ -1,19 +1,13 @@
-## Create Aptos Dapp Boilerplate Template
+## Object Vibe
 
-The Boilerplate template provides a starter dapp with all necessary dapp infrastructure and a simple wallet info implementation, transfer APT and a simple message board functionality to send and read a message on chain.
+On-chain comments and voting for any Aptos object.
 
-## Read the Boilerplate template docs
+### Features
 
-To get started with the Boilerplate template and learn more about the template functionality and usage, head over to the [Boilerplate template docs](https://learn.aptoslabs.com/en/dapp-templates/boilerplate-template)
-
-## The Boilerplate template provides:
-
-- **Folder structure** - A pre-made dapp folder structure with a `frontend` and `contract` folders.
-- **Dapp infrastructure** - All required dependencies a dapp needs to start building on the Aptos network.
-- **Wallet Info implementation** - Pre-made `WalletInfo` components to demonstrate how one can use to read a connected Wallet info.
-- **Transfer APT implementation** - Pre-made `transfer` components to send APT to an address.
-- **Message board functionality implementation** - Pre-made `message` components to send and read a message on chain
-- **Vibe Social** - On-chain comments and voting for any Aptos object: comment object (Move V2), up/down votes (one per wallet per comment), delete by author; React `VibeFeed`, `VibeButton`, and `useVibeActions` hook
+- Post comments (each comment is a Move V2 Object)
+- Upvote / downvote (one vote per wallet per comment)
+- Delete comment (author-only)
+- Global feed (via on-chain events) + “My comments” filter in UI
 
 ## What tools the template uses?
 
@@ -39,6 +33,15 @@ Some commands are built-in the template and can be ran as a npm script, for exam
 - `npm run deploy` - a command to deploy the dapp to Vercel
 
 For all other available CLI commands, can run `npx aptos` and see a list of all available commands.
+
+## Deployed module addresses
+
+| Network | Module address (object) |
+|---------|-------------------------|
+| Devnet  | `0xb9835bf6fe9b3a1f1ac13b37ce82971e3aa7c0e1257295f4111392a1eddfe7de` |
+| Testnet | `0xc9496b2eb08c07508585de8643b3e45b32535bb3a97ce835197bd9d2dd42eaf9` |
+
+After publishing to testnet, run `npm run update-readme-testnet-address` to fill the Testnet row from `.env`.
 
 ## Run on Devnet
 

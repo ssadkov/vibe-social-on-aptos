@@ -117,58 +117,6 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">Recent (newest first)</h4>
-          {recentComments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
-          ) : (
-            <ul className="text-sm text-muted-foreground space-y-1 max-h-48 overflow-y-auto">
-              {recentComments.map((e, i) => (
-                <li key={`${e.comment}-${i}`} className="flex items-center gap-2 flex-wrap">
-                  <span className="truncate max-w-[100px]">{e.target_obj.slice(0, 8)}…</span>
-                  <span>→</span>
-                  <span className="truncate max-w-[100px]">{e.comment.slice(0, 8)}…</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs shrink-0"
-                    onClick={() => onTargetChange?.(e.target_obj)}
-                  >
-                    View target
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium">My comments</h4>
-          {!myAddress ? (
-            <p className="text-sm text-muted-foreground">Connect a wallet to see your comments.</p>
-          ) : myComments.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No comments from this wallet.</p>
-          ) : (
-            <ul className="text-sm text-muted-foreground space-y-1 max-h-48 overflow-y-auto">
-              {[...myComments].reverse().map((e, i) => (
-                <li key={`my-${e.comment}-${i}`} className="flex items-center gap-2 flex-wrap">
-                  <span className="truncate max-w-[100px]">{e.target_obj.slice(0, 8)}…</span>
-                  <span>→</span>
-                  <span className="truncate max-w-[100px]">{e.comment.slice(0, 8)}…</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-xs shrink-0"
-                    onClick={() => onTargetChange?.(e.target_obj)}
-                  >
-                    View target
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </div>
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium">Target object address (vibe checks)</label>
         <div className="flex gap-2">
@@ -180,6 +128,58 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
           <Button onClick={handleLoadTarget} variant="secondary">
             Load
           </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Recent comments — left column */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">Recent (newest first)</h4>
+          {recentComments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No comments yet.</p>
+          ) : (
+            <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
+              {recentComments.map((e, i) => (
+                <RecentCommentCard
+                  key={`recent-${e.comment}-${i}`}
+                  commentAddress={e.comment}
+                  targetObj={e.target_obj}
+                  onTargetChange={(addr) => {
+                    setTargetInput(addr);
+                    onTargetChange?.(addr);
+                  }}
+                  onVote={castVote}
+                  isPending={isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* My comments — right column */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium">My comments</h4>
+          {!myAddress ? (
+            <p className="text-sm text-muted-foreground">Connect a wallet to see your comments.</p>
+          ) : myComments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No comments from this wallet.</p>
+          ) : (
+            <div className="flex flex-col gap-3 max-h-[420px] overflow-y-auto pr-1">
+              {[...myComments].reverse().map((e, i) => (
+                <RecentCommentCard
+                  key={`my-${e.comment}-${i}`}
+                  commentAddress={e.comment}
+                  targetObj={e.target_obj}
+                  onTargetChange={(addr) => {
+                    setTargetInput(addr);
+                    onTargetChange?.(addr);
+                  }}
+                  onVote={castVote}
+                  isPending={isPending}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -250,5 +250,42 @@ function CommentCardLoader({
       onVote={onVote}
       isPending={isPending}
     />
+  );
+}
+
+/** Card for a comment in Recent / My comments: loads full comment and shows "View target" */
+function RecentCommentCard({
+  commentAddress,
+  targetObj,
+  onTargetChange,
+  onVote,
+  isPending,
+}: {
+  commentAddress: string;
+  targetObj: string;
+  onTargetChange?: (addr: string) => void;
+  onVote: (addr: string, up: boolean) => Promise<boolean>;
+  isPending: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+        <span className="font-medium">Target</span>
+        <span className="truncate max-w-[240px]">{targetObj}</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 text-xs px-2"
+          onClick={() => onTargetChange?.(targetObj)}
+        >
+          View
+        </Button>
+      </div>
+      <CommentCardLoader
+        commentAddress={commentAddress}
+        onVote={onVote}
+        isPending={isPending}
+      />
+    </div>
   );
 }
