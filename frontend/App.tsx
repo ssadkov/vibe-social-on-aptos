@@ -1,12 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Header } from "@/components/Header";
 import { VibeFeed } from "@/components/VibeFeed";
+import { useSelectedNetwork } from "@/hooks/useSelectedNetwork";
 
 function App() {
   const { connected } = useWallet();
+  const network = useSelectedNetwork();
   const [targetInput, setTargetInput] = useState("");
   const [targetObjAddress, setTargetObjAddress] = useState("");
+
+  useEffect(() => {
+    // Avoid mixing state between networks.
+    setTargetInput("");
+    setTargetObjAddress("");
+  }, [network]);
 
   const handleLoadTarget = () => {
     const trimmed = targetInput.trim();
@@ -25,6 +33,7 @@ function App() {
           targetInput=""
           onTargetInputChange={() => {}}
           onLoadTarget={() => {}}
+          network={network}
         />
         <main className="flex flex-1 items-center justify-center p-6">
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 p-8 text-center shadow-sm">
@@ -36,6 +45,16 @@ function App() {
             </p>
           </div>
         </main>
+        <footer className="h-8 bg-slate-100 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 flex items-center justify-end text-[10px] text-slate-500 font-mono tracking-tight shrink-0">
+          <a
+            href="https://x.com/ssadkov"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-500 hover:text-primary transition"
+          >
+            Vibecoded by @ssadkov
+          </a>
+        </footer>
       </div>
     );
   }
@@ -46,6 +65,7 @@ function App() {
         targetInput={targetInput}
         onTargetInputChange={setTargetInput}
         onLoadTarget={handleLoadTarget}
+        network={network}
       />
       <main className="flex flex-1 overflow-hidden">
         <VibeFeed
@@ -60,6 +80,14 @@ function App() {
             Object Vibe
           </span>
         </div>
+        <a
+          href="https://x.com/ssadkov"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-slate-500 hover:text-primary transition"
+        >
+          Vibecoded by @ssadkov
+        </a>
       </footer>
     </div>
   );

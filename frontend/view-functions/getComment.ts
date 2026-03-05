@@ -1,4 +1,4 @@
-import { MODULE_ADDRESS } from "@/constants";
+import type { AppNetwork } from "@/constants";
 import { aptosClient } from "@/utils/aptosClient";
 
 export type CommentData = {
@@ -8,12 +8,15 @@ export type CommentData = {
   vibeScore: number;
 };
 
-export const getComment = async (commentAddress: string): Promise<CommentData> => {
-  const [content, author, targetObj, vibeScore] = await aptosClient().view<
+export const getComment = async (
+  commentAddress: string,
+  params: { network: AppNetwork; moduleAddress: string }
+): Promise<CommentData> => {
+  const [content, author, targetObj, vibeScore] = await aptosClient(params.network).view<
     [string, string, string, number]
   >({
     payload: {
-      function: `${MODULE_ADDRESS}::vibe_social::get_comment`,
+      function: `${params.moduleAddress}::vibe_social::get_comment`,
       functionArguments: [commentAddress],
     },
   });

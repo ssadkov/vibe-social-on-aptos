@@ -8,22 +8,25 @@ import {
   getAllCommentAddresses,
 } from "@/view-functions/getCommentAddressesByTarget";
 import { CommentData } from "@/view-functions/getComment";
-import { MODULE_ADDRESS, NETWORK } from "@/constants";
 import { VibeButton } from "@/components/VibeButton";
 import { useToast } from "@/components/ui/use-toast";
+import { useAnsName } from "@/hooks/useAnsName";
+import { getModuleAddress } from "@/constants";
+import { useSelectedNetwork } from "@/hooks/useSelectedNetwork";
+import type { AppNetwork } from "@/constants";
 
 type VibeFeedProps = {
   targetObjAddress: string;
   onTargetChange?: (addr: string) => void;
 };
 
-function toExplorerAccountUrl(address: string) {
-  const net = NETWORK === "mainnet" ? "mainnet" : NETWORK === "testnet" ? "testnet" : "devnet";
-  return `https://explorer.aptoslabs.com/account/${address}?network=${net}`;
+function toExplorerAccountUrl(network: AppNetwork, address: string) {
+  return `https://explorer.aptoslabs.com/account/${address}?network=${network}`;
 }
 
 /** Comment card for center panel (object thread) - design style */
 function CommentCard({
+  network,
   commentAddress,
   data,
   onVote,
@@ -31,6 +34,7 @@ function CommentCard({
   viewerAddress,
   showVoting = true,
 }: {
+  network: AppNetwork;
   commentAddress: string;
   data: CommentData;
   onVote: (addr: string, up: boolean) => Promise<boolean>;
@@ -43,6 +47,9 @@ function CommentCard({
     data.author?.toLowerCase?.() !== viewerAddress.toLowerCase();
   const shouldShowVoting = showVoting && canVote;
 
+  const ansName = useAnsName(data.author, network);
+  const authorDisplay = ansName ?? `${data.author.slice(0, 10)}...`;
+
   return (
     <div className="flex gap-4 p-4 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
       <div className="size-10 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0 flex items-center justify-center text-slate-500 dark:text-slate-400 text-xs font-mono">
@@ -50,8 +57,8 @@ function CommentCard({
       </div>
       <div className="flex flex-col gap-1 flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-base font-bold truncate">
-            {data.author.slice(0, 10)}...
+          <span className="text-base font-bold truncate" title={data.author}>
+            {authorDisplay}
           </span>
           <span className="text-[10px] text-slate-400 uppercase tracking-tighter font-mono shrink-0">
             Score: {data.vibeScore}
@@ -60,7 +67,7 @@ function CommentCard({
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-mono flex-wrap">
           <a
             className="underline underline-offset-4 hover:text-primary"
-            href={toExplorerAccountUrl(commentAddress)}
+            href={toExplorerAccountUrl(network, commentAddress)}
             target="_blank"
             rel="noreferrer"
             onClick={(e) => e.stopPropagation()}
@@ -100,8 +107,33 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [newContent, setNewContent] = useState("");
+  const network = useSelectedNetwork();
+  const moduleAddress = getModuleAddress(network);
   const myAddress = account?.address?.toString?.() ?? "";
   const myAddressLower = myAddress.toLowerCase();
+
+  if (!moduleAddress) {
+    const envKey =
+      network === "mainnet"
+        ? "VITE_MODULE_ADDRESS_MAINNET"
+        : network === "testnet"
+          ? "VITE_MODULE_ADDRESS_TESTNET"
+          : "VITE_MODULE_ADDRESS_DEVNET";
+    return (
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="max-w-lg w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Contract is not configured for {network}
+          </h3>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+            Set <span className="font-mono font-semibold">{envKey}</span> (or
+            fallback <span className="font-mono font-semibold">VITE_MODULE_ADDRESS</span>) in
+            <span className="font-mono"> .env</span> and restart the dev server.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -112,13 +144,17 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
     }
   };
 
-  const queryKey = ["vibe-comments", targetObjAddress];
+  const queryKey = ["vibe-comments", network, moduleAddress ?? "", targetObjAddress];
   const [localCommentAddrs, setLocalCommentAddrs] = useState<string[]>([]);
 
   const { data: fetchedAddresses = [] } = useQuery({
     queryKey,
-    queryFn: () => getCommentAddressesByTarget(targetObjAddress),
-    enabled: !!targetObjAddress && targetObjAddress.length > 1,
+    queryFn: () =>
+      getCommentAddressesByTarget(targetObjAddress, {
+        network,
+        moduleAddress: moduleAddress!,
+      }),
+    enabled: !!moduleAddress && !!targetObjAddress && targetObjAddress.length > 1,
   });
 
   const commentAddresses = Array.from(
@@ -126,9 +162,9 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
   );
 
   const { data: globalComments = [] } = useQuery({
-    queryKey: ["vibe-global-comments"],
-    queryFn: getAllCommentAddresses,
-    enabled: !!MODULE_ADDRESS,
+    queryKey: ["vibe-global-comments", network, moduleAddress ?? ""],
+    queryFn: () => getAllCommentAddresses({ network, moduleAddress: moduleAddress! }),
+    enabled: !!moduleAddress,
   });
 
   const handlePostComment = async () => {
@@ -138,7 +174,7 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
       setNewContent("");
       setLocalCommentAddrs((prev) => [...prev, addr]);
       queryClient.invalidateQueries({ queryKey });
-      queryClient.invalidateQueries({ queryKey: ["vibe-global-comments"] });
+      queryClient.invalidateQueries({ queryKey: ["vibe-global-comments", network, moduleAddress ?? ""] });
       toast({ title: "Comment posted", description: `Comment at ${addr.slice(0, 10)}...` });
     } else {
       toast({ variant: "destructive", title: "Error", description: "Failed to post comment" });
@@ -152,11 +188,11 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
 
   const viewTarget = (addr: string) => onTargetChange?.(addr);
 
-  // No object loaded: 2 columns only (Recent | My comments)
+  // No object loaded: 2 columns (stacked on mobile)
   if (!targetObjAddress) {
     return (
-      <div className="flex flex-1 w-full overflow-hidden">
-        <aside className="flex-1 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto">
+      <div className="flex flex-1 w-full overflow-hidden flex-col md:flex-row">
+        <aside className="flex-1 min-h-0 border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
             <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               Recent (newest first)
@@ -170,6 +206,8 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
               recentComments.map((e, i) => (
                 <SidebarCommentItem
                   key={`recent-${e.comment}-${i}`}
+                  network={network}
+                  moduleAddress={moduleAddress}
                   commentAddress={e.comment}
                   targetObj={e.target_obj}
                   onViewTarget={viewTarget}
@@ -180,7 +218,7 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
             )}
           </div>
         </aside>
-        <aside className="flex-1 border-l border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto">
+        <aside className="flex-1 min-h-0 border-l-0 md:border-l border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto">
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-slate-50 dark:bg-background-dark/90 backdrop-blur-md z-10">
             <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
               My comments
@@ -200,6 +238,8 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
               [...myComments].reverse().map((e, i) => (
                 <SidebarCommentItem
                   key={`my-${e.comment}-${i}`}
+                  network={network}
+                  moduleAddress={moduleAddress}
                   commentAddress={e.comment}
                   targetObj={e.target_obj}
                   onViewTarget={viewTarget}
@@ -214,71 +254,174 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
     );
   }
 
-  // Object loaded: 3 columns — Recent | Object (center) | My comments
+  // Object loaded: 3 columns on desktop; on mobile: tabs (Discussion | Recent | My comments)
+  const [mobileTab, setMobileTab] = useState<"discussion" | "recent" | "mycomments">("discussion");
+
+  const mobileTabBar = (
+    <div className="md:hidden flex border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 shrink-0">
+      {(["discussion", "recent", "mycomments"] as const).map((tab) => (
+        <button
+          key={tab}
+          type="button"
+          onClick={() => setMobileTab(tab)}
+          className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition ${
+            mobileTab === tab
+              ? "text-primary border-b-2 border-primary bg-background-light dark:bg-background-dark"
+              : "text-slate-500 dark:text-slate-400"
+          }`}
+        >
+          {tab === "discussion" ? "Discussion" : tab === "recent" ? "Recent" : "My comments"}
+        </button>
+      ))}
+    </div>
+  );
+
+  const recentPanel = (
+    <div className="flex flex-col h-full overflow-y-auto">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          Recent
+        </h3>
+        <span className="material-symbols-outlined text-primary text-sm">sensors</span>
+      </div>
+      <div className="flex flex-col">
+        {recentComments.length === 0 ? (
+          <p className="p-4 text-base text-slate-500 dark:text-slate-400">No comments yet.</p>
+        ) : (
+          recentComments.slice(0, 15).map((e, i) => (
+            <SidebarCommentItem
+              key={`recent-${e.comment}-${i}`}
+              network={network}
+              moduleAddress={moduleAddress}
+              commentAddress={e.comment}
+              targetObj={e.target_obj}
+              onViewTarget={viewTarget}
+              isActive={e.target_obj === targetObjAddress}
+              onCopy={copyToClipboard}
+              viewerAddressLower={myAddressLower}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+
+  const myCommentsPanel = (
+    <div className="flex flex-col h-full overflow-y-auto">
+      <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-slate-50 dark:bg-background-dark/90 backdrop-blur-md z-10">
+        <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+          My comments
+        </h3>
+        <span className="material-symbols-outlined text-primary text-sm">bookmark</span>
+      </div>
+      <div className="flex flex-col p-2 gap-2">
+        {!myAddress ? (
+          <p className="p-4 text-base text-slate-500 dark:text-slate-400">
+            Connect a wallet to see your comments.
+          </p>
+        ) : myComments.length === 0 ? (
+          <p className="p-4 text-base text-slate-500 dark:text-slate-400">
+            No comments from this wallet.
+          </p>
+        ) : (
+          [...myComments].reverse().map((e, i) => (
+            <SidebarCommentItem
+              key={`my-${e.comment}-${i}`}
+              network={network}
+              moduleAddress={moduleAddress}
+              commentAddress={e.comment}
+              targetObj={e.target_obj}
+              onViewTarget={viewTarget}
+              isActive={e.target_obj === targetObjAddress}
+              onCopy={copyToClipboard}
+              viewerAddressLower={myAddressLower}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <>
-      <aside className="w-72 lg:w-80 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto shrink-0">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-          <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Recent
-          </h3>
-          <span className="material-symbols-outlined text-primary text-sm">sensors</span>
-        </div>
-        <div className="flex flex-col">
-          {recentComments.length === 0 ? (
-            <p className="p-4 text-base text-slate-500 dark:text-slate-400">No comments yet.</p>
-          ) : (
-            recentComments.slice(0, 15).map((e, i) => (
-              <SidebarCommentItem
-                key={`recent-${e.comment}-${i}`}
-                commentAddress={e.comment}
-                targetObj={e.target_obj}
-                onViewTarget={viewTarget}
-                isActive={e.target_obj === targetObjAddress}
-                onCopy={copyToClipboard}
-                viewerAddressLower={myAddressLower}
-              />
-            ))
-          )}
-        </div>
-      </aside>
+      {mobileTabBar}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <aside className="hidden md:flex w-72 lg:w-80 border-r border-slate-200 dark:border-slate-800 flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto shrink-0">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Recent
+            </h3>
+            <span className="material-symbols-outlined text-primary text-sm">sensors</span>
+          </div>
+          <div className="flex flex-col">
+            {recentComments.length === 0 ? (
+              <p className="p-4 text-base text-slate-500 dark:text-slate-400">No comments yet.</p>
+            ) : (
+              recentComments.slice(0, 15).map((e, i) => (
+                <SidebarCommentItem
+                  key={`recent-${e.comment}-${i}`}
+                  network={network}
+                  moduleAddress={moduleAddress}
+                  commentAddress={e.comment}
+                  targetObj={e.target_obj}
+                  onViewTarget={viewTarget}
+                  isActive={e.target_obj === targetObjAddress}
+                  onCopy={copyToClipboard}
+                  viewerAddressLower={myAddressLower}
+                />
+              ))
+            )}
+          </div>
+        </aside>
 
-      <section className="flex-1 flex flex-col bg-background-light dark:bg-background-dark overflow-hidden relative min-w-0">
+        {mobileTab === "recent" && (
+          <div className="md:hidden flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-50 dark:bg-background-dark/50">
+            {recentPanel}
+          </div>
+        )}
+        {mobileTab === "mycomments" && (
+          <div className="md:hidden flex-1 flex flex-col min-h-0 overflow-hidden bg-slate-50 dark:bg-background-dark/50">
+            {myCommentsPanel}
+          </div>
+        )}
+
+      <section
+        className={`flex-1 flex flex-col bg-background-light dark:bg-background-dark overflow-hidden relative min-w-0 ${
+          mobileTab !== "discussion" ? "hidden md:flex" : ""
+        }`}
+      >
         <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-background-dark/50 backdrop-blur-sm sticky top-0 z-10">
-          <div className="flex flex-wrap justify-between items-start gap-4">
-            <div className="flex flex-col gap-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">
-                  Active Object
-                </span>
-                <span className="text-xs text-slate-500 dark:text-slate-400 font-mono truncate">
-                  {targetObjAddress.slice(0, 10)}...{targetObjAddress.slice(-6)}
-                </span>
-                <button
-                  type="button"
-                  className="text-slate-500 dark:text-slate-400 hover:text-primary"
-                  onClick={() => copyToClipboard(targetObjAddress)}
-                  title="Copy address"
-                >
-                  <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                </button>
-                <a
-                  className="text-slate-500 dark:text-slate-400 hover:text-primary"
-                  href={toExplorerAccountUrl(targetObjAddress)}
-                  target="_blank"
-                  rel="noreferrer"
-                  title="Open in Aptos Explorer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                </a>
-              </div>
-              <h1 className="text-xl md:text-2xl font-bold tracking-tight truncate">
-                Object discussion
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">
-                Real-time object discussion thread
-              </p>
+          <div className="flex flex-col gap-2 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-[10px] font-bold uppercase tracking-widest">
+                Active Object
+              </span>
             </div>
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <span className="text-base sm:text-lg md:text-xl font-mono font-semibold text-slate-800 dark:text-slate-200 truncate">
+                {targetObjAddress.slice(0, 12)}...{targetObjAddress.slice(-8)}
+              </span>
+              <button
+                type="button"
+                className="text-slate-500 dark:text-slate-400 hover:text-primary"
+                onClick={() => copyToClipboard(targetObjAddress)}
+                title="Copy address"
+              >
+                <span className="material-symbols-outlined text-[20px] sm:text-[22px]">content_copy</span>
+              </button>
+              <a
+                className="text-slate-500 dark:text-slate-400 hover:text-primary"
+                href={toExplorerAccountUrl(network, targetObjAddress)}
+                target="_blank"
+                rel="noreferrer"
+                title="Open in Aptos Explorer"
+              >
+                <span className="material-symbols-outlined text-[20px] sm:text-[22px]">open_in_new</span>
+              </a>
+            </div>
+            <p className="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400">
+              Object discussion · Real-time thread
+            </p>
           </div>
         </div>
 
@@ -313,6 +456,8 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
               commentAddresses.map((addr) => (
                 <CommentCardLoader
                   key={addr}
+                  network={network}
+                  moduleAddress={moduleAddress}
                   commentAddress={addr}
                   onVote={castVote}
                   isPending={isPending}
@@ -325,43 +470,48 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
         </div>
       </section>
 
-      <aside className="w-72 lg:w-80 border-l border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto shrink-0">
-        <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-slate-50 dark:bg-background-dark/90 backdrop-blur-md z-10">
-          <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            My comments
-          </h3>
-          <span className="material-symbols-outlined text-primary text-sm">bookmark</span>
-        </div>
-        <div className="flex flex-col p-2 gap-2">
-          {!myAddress ? (
-            <p className="p-4 text-base text-slate-500 dark:text-slate-400">
-              Connect a wallet to see your comments.
-            </p>
-          ) : myComments.length === 0 ? (
-            <p className="p-4 text-base text-slate-500 dark:text-slate-400">
-              No comments from this wallet.
-            </p>
-          ) : (
-            [...myComments].reverse().map((e, i) => (
-              <SidebarCommentItem
-                key={`my-${e.comment}-${i}`}
-                commentAddress={e.comment}
-                targetObj={e.target_obj}
-                onViewTarget={viewTarget}
-                isActive={e.target_obj === targetObjAddress}
-                onCopy={copyToClipboard}
-                viewerAddressLower={myAddressLower}
-              />
-            ))
-          )}
-        </div>
-      </aside>
+        <aside className="hidden md:flex w-72 lg:w-80 border-l border-slate-200 dark:border-slate-800 flex-col bg-slate-50 dark:bg-background-dark/50 overflow-y-auto shrink-0">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-slate-50 dark:bg-background-dark/90 backdrop-blur-md z-10">
+            <h3 className="text-base font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              My comments
+            </h3>
+            <span className="material-symbols-outlined text-primary text-sm">bookmark</span>
+          </div>
+          <div className="flex flex-col p-2 gap-2">
+            {!myAddress ? (
+              <p className="p-4 text-base text-slate-500 dark:text-slate-400">
+                Connect a wallet to see your comments.
+              </p>
+            ) : myComments.length === 0 ? (
+              <p className="p-4 text-base text-slate-500 dark:text-slate-400">
+                No comments from this wallet.
+              </p>
+            ) : (
+              [...myComments].reverse().map((e, i) => (
+                <SidebarCommentItem
+                  key={`my-${e.comment}-${i}`}
+                  network={network}
+                  moduleAddress={moduleAddress}
+                  commentAddress={e.comment}
+                  targetObj={e.target_obj}
+                  onViewTarget={viewTarget}
+                  isActive={e.target_obj === targetObjAddress}
+                  onCopy={copyToClipboard}
+                  viewerAddressLower={myAddressLower}
+                />
+              ))
+            )}
+          </div>
+        </aside>
+      </div>
     </>
   );
 }
 
 /** Sidebar item: compact card with target link (Recent / My comments) */
 function SidebarCommentItem({
+  network,
+  moduleAddress,
   commentAddress,
   targetObj,
   onViewTarget,
@@ -369,6 +519,8 @@ function SidebarCommentItem({
   onCopy,
   viewerAddressLower,
 }: {
+  network: AppNetwork;
+  moduleAddress: string | undefined;
   commentAddress: string;
   targetObj: string;
   onViewTarget: (addr: string) => void;
@@ -377,8 +529,9 @@ function SidebarCommentItem({
   viewerAddressLower: string;
 }) {
   const { data, isLoading } = useQuery({
-    queryKey: ["vibe-comment", commentAddress],
-    queryFn: () => getComment(commentAddress),
+    queryKey: ["vibe-comment", network, moduleAddress ?? "", commentAddress],
+    queryFn: () => getComment(commentAddress, { network, moduleAddress: moduleAddress! }),
+    enabled: !!moduleAddress,
   });
 
   const isMine = !!viewerAddressLower && (data?.author?.toLowerCase?.() === viewerAddressLower);
@@ -396,7 +549,7 @@ function SidebarCommentItem({
       <div className="flex items-center gap-2 mb-1 min-w-0">
         <a
           className="text-xs font-mono text-primary truncate underline underline-offset-4 hover:opacity-90"
-          href={toExplorerAccountUrl(targetObj)}
+          href={toExplorerAccountUrl(network, targetObj)}
           target="_blank"
           rel="noreferrer"
           onClick={(e) => e.stopPropagation()}
@@ -449,12 +602,16 @@ function SidebarCommentItem({
 }
 
 function CommentCardLoader({
+  network,
+  moduleAddress,
   commentAddress,
   onVote,
   isPending,
   showVoting = true,
   viewerAddressLower,
 }: {
+  network: AppNetwork;
+  moduleAddress: string | undefined;
   commentAddress: string;
   onVote: (addr: string, up: boolean) => Promise<boolean>;
   isPending: boolean;
@@ -462,8 +619,9 @@ function CommentCardLoader({
   viewerAddressLower: string;
 }) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["vibe-comment", commentAddress],
-    queryFn: () => getComment(commentAddress),
+    queryKey: ["vibe-comment", network, moduleAddress ?? "", commentAddress],
+    queryFn: () => getComment(commentAddress, { network, moduleAddress: moduleAddress! }),
+    enabled: !!moduleAddress,
   });
 
   if (isLoading) {
@@ -481,6 +639,7 @@ function CommentCardLoader({
 
   return (
     <CommentCard
+      network={network}
       commentAddress={commentAddress}
       data={data}
       onVote={onVote}
