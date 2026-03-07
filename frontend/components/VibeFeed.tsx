@@ -146,6 +146,7 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
 
   const queryKey = ["vibe-comments", network, moduleAddress ?? "", targetObjAddress];
   const [localCommentAddrs, setLocalCommentAddrs] = useState<string[]>([]);
+  const [mobileTab, setMobileTab] = useState<"discussion" | "recent" | "mycomments">("discussion");
 
   const { data: fetchedAddresses = [] } = useQuery({
     queryKey,
@@ -255,8 +256,6 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
   }
 
   // Object loaded: 3 columns on desktop; on mobile: tabs (Discussion | Recent | My comments)
-  const [mobileTab, setMobileTab] = useState<"discussion" | "recent" | "mycomments">("discussion");
-
   const mobileTabBar = (
     <div className="md:hidden flex border-b border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/50 shrink-0">
       {(["discussion", "recent", "mycomments"] as const).map((tab) => (
