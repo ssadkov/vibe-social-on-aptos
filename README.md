@@ -13,11 +13,10 @@ On-chain comments and voting for any Aptos object.
 
 - React framework
 - Vite development tool
-- shadcn/ui + tailwind for styling
+- shadcn/ui + Tailwind for styling
 - Aptos TS SDK
 - Aptos Wallet Adapter
-- Node based Move commands
-- [Vite-pwa](https://vite-pwa-org.netlify.app/)
+- Node-based Move commands (aptos-cli)
 
 ## What Move commands are available?
 
@@ -32,6 +31,8 @@ Some commands are built-in the template and can be ran as a npm script, for exam
 - `npm run dev` - a command to run the frontend locally
 - `npm run deploy` - a command to deploy the dapp to Vercel
 
+Optional scripts (see `package.json`): `init-comment-events`, `fresh-deploy`, `fix-env-address`, `create-testnet-account`, `update-readme-testnet-address`.
+
 For all other available CLI commands, can run `npx aptos` and see a list of all available commands.
 
 ## Deployed module addresses
@@ -44,6 +45,17 @@ For all other available CLI commands, can run `npx aptos` and see a list of all 
 
 After publishing to testnet, run `npm run update-readme-testnet-address` to fill the Testnet row from `.env`.  
 After publishing to mainnet, run `npm run update-readme-mainnet-address` to fill the Mainnet row.
+
+## Use cases
+
+Object Vibe lets you attach comments and votes to **any Aptos object address**. Typical scenarios:
+
+- **NFT / digital collectible** — discuss a specific NFT; link the object address and see all comments and votes in one thread.
+- **Token or fungible asset** — leave feedback or notes tied to a token’s resource address (e.g. for governance or community context).
+- **Smart contract or module** — comment on a deployed contract object for documentation, audits, or community discussion.
+- **DAO or multisig** — use an object (e.g. proposal or treasury) as the target; members vote on comments to surface useful feedback.
+- **Cross-app “vibe” layer** — any dApp can link to an object URL; users see the same comment thread regardless of which frontend they use (canonical discussion per object).
+- **“My comments” workflow** — use the sidebar filter to jump to objects you’ve commented on and continue the conversation.
 
 ## Run on Devnet
 
@@ -62,7 +74,7 @@ cp .env.example .env
 
 Fund the account with devnet APT: https://aptoslabs.com/testnet-faucet (choose Devnet).
 
-### 3. Fill `.env` (project root: `vibe-social/`)
+### 3. Fill `.env` (project root)
 
 | Variable | Where it's used | What to set |
 |----------|-----------------|-------------|
@@ -137,3 +149,10 @@ npm run update-readme-mainnet-address
 ### 4. Frontend / Vercel
 
 Set environment variables for production: `VITE_APP_NETWORK=mainnet` and `VITE_MODULE_ADDRESS_MAINNET=<your_mainnet_object_address>` (or use `VITE_MODULE_ADDRESS` as a fallback).
+
+## Cursor / Agent SKILLS
+
+This repo does not reference Cursor SKILLS in code. During development:
+
+- **Vercel deploy** was done manually (Vercel dashboard + `npm run deploy`). A Vercel-deploy–style skill can be used to automate “deploy and give me the link” from the IDE.
+- No other skills were explicitly applied; the codebase has no skill files or skill invocations. If you use Cursor with skills (e.g. create-rule, create-skill), you can add project-specific rules or a skill for Move + Aptos TS SDK and document that here.

@@ -200,7 +200,7 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
             </h3>
             <span className="material-symbols-outlined text-primary text-sm">sensors</span>
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col p-2 gap-2">
             {recentComments.length === 0 ? (
               <p className="p-4 text-base text-slate-500 dark:text-slate-400">No comments yet.</p>
             ) : (
@@ -283,7 +283,7 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
         </h3>
         <span className="material-symbols-outlined text-primary text-sm">sensors</span>
       </div>
-      <div className="flex flex-col">
+      <div className="flex flex-col p-2 gap-2">
         {recentComments.length === 0 ? (
           <p className="p-4 text-base text-slate-500 dark:text-slate-400">No comments yet.</p>
         ) : (
@@ -352,7 +352,7 @@ export function VibeFeed({ targetObjAddress, onTargetChange }: VibeFeedProps) {
             </h3>
             <span className="material-symbols-outlined text-primary text-sm">sensors</span>
           </div>
-          <div className="flex flex-col">
+          <div className="flex flex-col p-2 gap-2">
             {recentComments.length === 0 ? (
               <p className="p-4 text-base text-slate-500 dark:text-slate-400">No comments yet.</p>
             ) : (
@@ -537,7 +537,7 @@ function SidebarCommentItem({
 
   return (
     <div
-      className={`flex flex-col p-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer transition ${
+      className={`flex flex-col gap-2.5 p-3 rounded-lg border border-slate-200 dark:border-slate-800 shadow-sm cursor-pointer transition ${
         isActive ? "bg-primary/5 border-l-2 border-l-primary" : "bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/80"
       }`}
       onClick={() => onViewTarget(targetObj)}
@@ -545,53 +545,69 @@ function SidebarCommentItem({
       role="button"
       tabIndex={0}
     >
-      <div className="flex items-center gap-2 mb-1 min-w-0">
-        <a
-          className="text-xs font-mono text-primary truncate underline underline-offset-4 hover:opacity-90"
-          href={toExplorerAccountUrl(network, targetObj)}
-          target="_blank"
-          rel="noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          title="Open target in Aptos Explorer"
-        >
-          {targetObj.slice(0, 8)}...{targetObj.slice(-4)}
-        </a>
-        <button
-          type="button"
-          className="text-slate-500 dark:text-slate-400 hover:text-primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopy(targetObj);
-          }}
-          title="Copy target address"
-        >
-          <span className="material-symbols-outlined text-[16px]">content_copy</span>
-        </button>
-        <button
-          type="button"
-          className="text-slate-500 dark:text-slate-400 hover:text-primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopy(commentAddress);
-          }}
-          title="Copy comment object address"
-        >
-          <span className="material-symbols-outlined text-[16px]">tag</span>
-        </button>
-      </div>
-      {isLoading ? (
-        <p className="text-sm text-slate-400">Loading...</p>
-      ) : data ? (
-        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 italic">
-          &quot;{data.content.slice(0, 80)}{data.content.length > 80 ? "…" : ""}&quot;
-        </p>
-      ) : null}
-      {isMine && (
-        <div className="mt-1 text-[10px] font-mono text-slate-400">
-          Your comment
+      <div>
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          Thread
+        </span>
+        <div className="flex items-center gap-2 mt-1 min-w-0">
+          <a
+            className="text-xs font-mono text-primary truncate underline underline-offset-4 hover:opacity-90"
+            href={toExplorerAccountUrl(network, targetObj)}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Open target in Aptos Explorer"
+          >
+            {targetObj.slice(0, 8)}...{targetObj.slice(-4)}
+          </a>
+          <button
+            type="button"
+            className="text-slate-500 dark:text-slate-400 hover:text-primary shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy(targetObj);
+            }}
+            title="Copy target address"
+          >
+            <span className="material-symbols-outlined text-[16px]">content_copy</span>
+          </button>
+          <button
+            type="button"
+            className="text-slate-500 dark:text-slate-400 hover:text-primary shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopy(commentAddress);
+            }}
+            title="Copy comment object address"
+          >
+            <span className="material-symbols-outlined text-[16px]">tag</span>
+          </button>
         </div>
-      )}
-      <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700 mt-2">
+      </div>
+
+      <div className="rounded-md bg-slate-100/90 dark:bg-slate-900/60 p-2.5">
+        <div className="flex items-center justify-between gap-2 mb-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Comment
+          </span>
+          {isMine && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Yours
+            </span>
+          )}
+        </div>
+        {isLoading ? (
+          <p className="text-sm text-slate-400">Loading...</p>
+        ) : data ? (
+          <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2 italic">
+            &quot;{data.content.slice(0, 80)}{data.content.length > 80 ? "…" : ""}&quot;
+          </p>
+        ) : (
+          <p className="text-sm text-slate-400">Unavailable</p>
+        )}
+      </div>
+
+      <div className="flex justify-end">
         <span className="text-[10px] text-primary font-bold flex items-center gap-1">
           GO TO THREAD <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
         </span>
